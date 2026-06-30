@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Repertorio Arthu-rio</title>
+    <meta
+      name="description"
+      content="Repertorio musical com letras, cifras e arranjos por instrumento."
+    />
+    <link rel="icon" href="assets/repertoire-mark.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Lista de musicas">
+        <header class="brand">
+          <img src="assets/repertoire-mark.svg" alt="" class="brand-mark" />
+          <div>
+            <h1>Arthu-rio</h1>
+            <p>Repertorio musical</p>
+          </div>
+        </header>
+
+        <div class="search-wrap">
+          <i data-lucide="search" aria-hidden="true"></i>
+          <input id="searchInput" type="search" placeholder="Buscar musica ou artista" />
+        </div>
+
+        <div class="sidebar-actions">
+          <button id="addSongBtn" class="button button-primary" type="button">
+            <i data-lucide="plus" aria-hidden="true"></i>
+            <span>Adicionar</span>
+          </button>
+          <button id="syncBtn" class="button button-secondary" type="button" title="Sincronizar">
+            <i data-lucide="refresh-cw" aria-hidden="true"></i>
+            <span>Sync</span>
+          </button>
+        </div>
+
+        <nav id="songList" class="song-list" aria-label="Musicas cadastradas"></nav>
+      </aside>
+
+      <main class="content">
+        <section class="topbar" aria-label="Resumo do repertorio">
+          <div>
+            <p class="eyebrow">GitHub Pages + Apps Script</p>
+            <h2 id="pageTitle">Repertorio</h2>
+          </div>
+          <div class="stats">
+            <div>
+              <strong id="songCount">0</strong>
+              <span>musicas</span>
+            </div>
+            <div>
+              <strong id="instrumentCount">0</strong>
+              <span>partes</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="detail-layout">
+          <article class="song-panel" aria-live="polite">
+            <div class="song-header">
+              <div>
+                <p id="songArtist" class="eyebrow"></p>
+                <h3 id="songTitle"></h3>
+                <p id="songMeta" class="song-meta"></p>
+              </div>
+              <div class="song-actions">
+                <button id="editSongBtn" class="icon-button" type="button" title="Editar musica">
+                  <i data-lucide="pencil" aria-hidden="true"></i>
+                </button>
+                <button id="printBtn" class="icon-button" type="button" title="Imprimir">
+                  <i data-lucide="printer" aria-hidden="true"></i>
+                </button>
+              </div>
+            </div>
+
+            <div id="notesBox" class="notes-box"></div>
+
+            <div class="tabs" id="instrumentTabs" role="tablist" aria-label="Instrumentos"></div>
+
+            <div class="chart-section">
+              <div class="section-heading">
+                <h4 id="chartTitle">Cifra</h4>
+                <button id="copyChartBtn" class="button button-secondary compact" type="button">
+                  <i data-lucide="copy" aria-hidden="true"></i>
+                  <span>Copiar</span>
+                </button>
+              </div>
+              <pre id="chartText" class="chart-box"></pre>
+            </div>
+
+            <div class="lyrics-section">
+              <div class="section-heading">
+                <h4>Letra</h4>
+                <button id="copyLyricsBtn" class="button button-secondary compact" type="button">
+                  <i data-lucide="copy" aria-hidden="true"></i>
+                  <span>Copiar</span>
+                </button>
+              </div>
+              <pre id="lyricsText" class="lyrics-box"></pre>
+            </div>
+          </article>
+
+          <aside class="guide-panel" aria-label="Fluxo de cadastro">
+            <h3>Cadastro</h3>
+            <p>
+              Adicione letra e cifras autorais, licenciadas ou transcritas por voce. O app separa a
+              cifra de cada instrumento para ensaio.
+            </p>
+            <ol>
+              <li>Publique o Apps Script como Web App.</li>
+              <li>Cole a URL em <code>APP_SCRIPT_URL</code> no <code>app.js</code>.</li>
+              <li>Use Adicionar ou Editar para salvar no backend.</li>
+            </ol>
+          </aside>
+        </section>
+      </main>
+    </div>
+
+    <dialog id="songDialog" class="song-dialog">
+      <form id="songForm" method="dialog">
+        <div class="dialog-header">
+          <div>
+            <p class="eyebrow">Musica</p>
+            <h3 id="dialogTitle">Adicionar musica</h3>
+          </div>
+          <button class="icon-button" type="button" id="closeDialogBtn" title="Fechar">
+            <i data-lucide="x" aria-hidden="true"></i>
+          </button>
+        </div>
+
+        <div class="form-grid">
+          <label>
+            Titulo
+            <input name="title" required />
+          </label>
+          <label>
+            Artista
+            <input name="artist" required />
+          </label>
+          <label>
+            Tom
+            <input name="key" placeholder="Ex.: Am" />
+          </label>
+          <label>
+            BPM
+            <input name="bpm" type="number" min="1" max="260" />
+          </label>
+        </div>
+
+        <label>
+          Observacoes
+          <textarea name="notes" rows="3" placeholder="Entrada, capo, dinamica, versao..."></textarea>
+        </label>
+
+        <label>
+          Letra
+          <textarea name="lyrics" rows="8" placeholder="Cole aqui a letra que voce tem direito de usar."></textarea>
+        </label>
+
+        <div class="instrument-editor">
+          <div class="section-heading">
+            <h4>Cifras por instrumento</h4>
+            <button id="addInstrumentBtn" class="button button-secondary compact" type="button">
+              <i data-lucide="plus" aria-hidden="true"></i>
+              <span>Instrumento</span>
+            </button>
+          </div>
+          <div id="instrumentFields"></div>
+        </div>
+
+        <div class="dialog-actions">
+          <button class="button button-secondary" type="button" id="cancelDialogBtn">Cancelar</button>
+          <button class="button button-primary" type="submit">
+            <i data-lucide="save" aria-hidden="true"></i>
+            <span>Salvar</span>
+          </button>
+        </div>
+      </form>
+    </dialog>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
