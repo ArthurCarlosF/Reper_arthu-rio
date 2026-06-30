@@ -1,4 +1,5 @@
-const APP_SCRIPT_URL = "";
+const APP_SCRIPT_URL =
+  "https://script.google.com/macros/s/AKfycby-USxqI9gM8zqtEHFOV-dUfaHgc3Ngyu1dStIm9mpgcrgCBCw66PI8f5_Q9n8R2Tnmuw/exec";
 
 const initialSongs = [
   createSong("Too Sweet", "Hozier"),
