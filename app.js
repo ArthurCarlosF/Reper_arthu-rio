@@ -1,17 +1,6 @@
 const APP_SCRIPT_URL =
   "https://script.google.com/macros/s/AKfycby-USxqI9gM8zqtEHFOV-dUfaHgc3Ngyu1dStIm9mpgcrgCBCw66PI8f5_Q9n8R2Tnmuw/exec";
 
-const initialSongs = [
-  createSong("Too Sweet", "Hozier"),
-  createSong("Have You Ever Seen the Rain", "Creedence Clearwater Revival"),
-  createSong("Hotel California", "Eagles"),
-  createSong("Malandragem", "Cassia Eller"),
-  createSong("Like a Stone", "Audioslave"),
-  createSong("Another Brick in the Wall", "Pink Floyd"),
-  createSong("Nothing Else Matters", "Metallica"),
-  createSong("Come as You Are", "Nirvana"),
-];
-
 const state = {
   songs: [],
   selectedSongId: null,
@@ -57,6 +46,9 @@ function init() {
   bindEvents();
   render();
   refreshIcons();
+  if (APP_SCRIPT_URL) {
+    syncWithBackend({ silent: true });
+  }
 }
 
 function createSong(title, artist) {
@@ -150,7 +142,19 @@ function renderSongList() {
 
 function renderSelectedSong() {
   const song = getSelectedSong();
-  if (!song) return;
+  if (!song) {
+    dom.pageTitle.textContent = "ReperArthuRio";
+    dom.songArtist.textContent = "";
+    dom.songTitle.textContent = "Repertorio vazio";
+    dom.songMeta.textContent = "";
+    dom.notesBox.textContent = "Clique em Sync para carregar as musicas do Apps Script.";
+    dom.notesBox.classList.add("visible");
+    dom.instrumentTabs.innerHTML = "";
+    dom.chartTitle.textContent = "Cifra";
+    dom.chartText.textContent = "Nenhuma musica carregada.";
+    dom.lyricsText.textContent = "Nenhuma letra carregada.";
+    return;
+  }
 
   const instrument = getSelectedInstrument(song);
   dom.pageTitle.textContent = song.title;
@@ -284,12 +288,12 @@ function getSelectedInstrument(song) {
 
 function loadLocalSongs() {
   const stored = localStorage.getItem("arthurio-repertoire");
-  if (!stored) return initialSongs;
+  if (!stored) return [];
   try {
     const songs = JSON.parse(stored);
-    return Array.isArray(songs) && songs.length ? mergeSongs(initialSongs, songs) : initialSongs;
+    return Array.isArray(songs) ? songs : [];
   } catch {
-    return initialSongs;
+    return [];
   }
 }
 
@@ -304,7 +308,8 @@ function backupLocalSongs() {
   );
 }
 
-async function syncWithBackend() {
+async function syncWithBackend(options = {}) {
+  const { silent = false } = options;
   if (!APP_SCRIPT_URL) {
     showToast("Configure APP_SCRIPT_URL no app.js para sincronizar com Apps Script.");
     return;
@@ -312,79 +317,25 @@ async function syncWithBackend() {
 
   try {
     const songs = await getBackendSongs();
-    backupLocalSongs();
-    const mergedSongs = mergeSongs(initialSongs, state.songs, songs);
-    if (mergedSongs.length) {
-      state.songs = mergedSongs;
-      state.selectedSongId = state.songs[0].id;
-      state.selectedInstrument = state.songs[0].instruments[0]?.name ?? "";
-      saveLocalSongs();
-      render();
-      showToast("Repertorio sincronizado sem apagar musicas locais.");
+    if (!songs.length) {
+      if (!silent) showToast("Nenhuma musica encontrada no Apps Script.");
+      return;
     }
+
+    backupLocalSongs();
+    const currentSongId = state.selectedSongId;
+    state.songs = songs.sort((a, b) => a.title.localeCompare(b.title, "pt-BR"));
+    state.selectedSongId = state.songs.some((song) => song.id === currentSongId)
+      ? currentSongId
+      : state.songs[0].id;
+    state.selectedInstrument = getSelectedSong()?.instruments[0]?.name ?? "";
+    saveLocalSongs();
+    render();
+    if (!silent) showToast("Repertorio carregado do Apps Script.");
   } catch (error) {
     console.error(error);
-    showToast("Nao foi possivel sincronizar agora.");
+    if (!silent) showToast("Nao foi possivel sincronizar agora.");
   }
-}
-
-function mergeSongs(...songLists) {
-  const merged = new Map();
-
-  songLists.flat().forEach((song) => {
-    if (!song?.id) return;
-    const existing = merged.get(song.id);
-    merged.set(song.id, mergeSong(existing, song));
-  });
-
-  return [...merged.values()].sort((a, b) => a.title.localeCompare(b.title, "pt-BR"));
-}
-
-function mergeSong(base, incoming) {
-  if (!base) return normalizeSong(incoming);
-  const normalizedIncoming = normalizeSong(incoming);
-  const instruments = mergeInstruments(base.instruments, normalizedIncoming.instruments);
-
-  return {
-    ...base,
-    ...normalizedIncoming,
-    title: normalizedIncoming.title || base.title,
-    artist: normalizedIncoming.artist || base.artist,
-    key: normalizedIncoming.key || base.key,
-    bpm: normalizedIncoming.bpm || base.bpm,
-    notes: normalizedIncoming.notes || base.notes,
-    lyrics: normalizedIncoming.lyrics || base.lyrics,
-    instruments,
-  };
-}
-
-function normalizeSong(song) {
-  return {
-    id: song.id,
-    title: song.title || "",
-    artist: song.artist || "",
-    key: song.key || "",
-    bpm: song.bpm || "",
-    notes: song.notes || "",
-    lyrics: song.lyrics || "",
-    instruments: Array.isArray(song.instruments) ? song.instruments : [],
-    updatedAt: song.updatedAt || "",
-  };
-}
-
-function mergeInstruments(baseInstruments = [], incomingInstruments = []) {
-  const merged = new Map();
-
-  [...baseInstruments, ...incomingInstruments].forEach((instrument) => {
-    if (!instrument?.name) return;
-    const existing = merged.get(instrument.name);
-    merged.set(instrument.name, {
-      name: instrument.name,
-      chart: instrument.chart || existing?.chart || "",
-    });
-  });
-
-  return [...merged.values()];
 }
 
 function getBackendSongs() {

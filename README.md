@@ -21,8 +21,8 @@ Site estatico para GitHub Pages com cadastro de repertorio, letra e cifras por i
 6. Copie a URL do Web App.
 7. Em `app.js`, cole a URL em `APP_SCRIPT_URL`.
 
-O site funciona sem backend usando `localStorage`. Com `APP_SCRIPT_URL` configurado, ele usa o Apps Script para listar e salvar musicas na planilha.
+O Apps Script e a planilha sao a fonte principal do repertorio. O `localStorage` e usado apenas como cache do navegador para manter a ultima lista carregada.
 
 ## Conteudo das cifras
 
-As musicas iniciais foram cadastradas apenas com titulo e artista. Para letras e cifras de obras comerciais, adicione somente conteudo autoral, licenciado, de dominio publico, ou material que voce tenha direito de usar.
+Para letras e cifras de obras comerciais, adicione somente conteudo autoral, licenciado, de dominio publico, ou material que voce tenha direito de usar.
