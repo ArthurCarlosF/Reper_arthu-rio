@@ -287,7 +287,7 @@ function loadLocalSongs() {
   if (!stored) return initialSongs;
   try {
     const songs = JSON.parse(stored);
-    return Array.isArray(songs) && songs.length ? songs : initialSongs;
+    return Array.isArray(songs) && songs.length ? mergeSongs(initialSongs, songs) : initialSongs;
   } catch {
     return initialSongs;
   }
@@ -295,6 +295,13 @@ function loadLocalSongs() {
 
 function saveLocalSongs() {
   localStorage.setItem("arthurio-repertoire", JSON.stringify(state.songs));
+}
+
+function backupLocalSongs() {
+  localStorage.setItem(
+    `arthurio-repertoire-backup-${new Date().toISOString()}`,
+    JSON.stringify(state.songs),
+  );
 }
 
 async function syncWithBackend() {
@@ -305,18 +312,79 @@ async function syncWithBackend() {
 
   try {
     const songs = await getBackendSongs();
-    if (songs.length) {
-      state.songs = songs;
+    backupLocalSongs();
+    const mergedSongs = mergeSongs(initialSongs, state.songs, songs);
+    if (mergedSongs.length) {
+      state.songs = mergedSongs;
       state.selectedSongId = state.songs[0].id;
       state.selectedInstrument = state.songs[0].instruments[0]?.name ?? "";
       saveLocalSongs();
       render();
-      showToast("Repertorio sincronizado.");
+      showToast("Repertorio sincronizado sem apagar musicas locais.");
     }
   } catch (error) {
     console.error(error);
     showToast("Nao foi possivel sincronizar agora.");
   }
+}
+
+function mergeSongs(...songLists) {
+  const merged = new Map();
+
+  songLists.flat().forEach((song) => {
+    if (!song?.id) return;
+    const existing = merged.get(song.id);
+    merged.set(song.id, mergeSong(existing, song));
+  });
+
+  return [...merged.values()].sort((a, b) => a.title.localeCompare(b.title, "pt-BR"));
+}
+
+function mergeSong(base, incoming) {
+  if (!base) return normalizeSong(incoming);
+  const normalizedIncoming = normalizeSong(incoming);
+  const instruments = mergeInstruments(base.instruments, normalizedIncoming.instruments);
+
+  return {
+    ...base,
+    ...normalizedIncoming,
+    title: normalizedIncoming.title || base.title,
+    artist: normalizedIncoming.artist || base.artist,
+    key: normalizedIncoming.key || base.key,
+    bpm: normalizedIncoming.bpm || base.bpm,
+    notes: normalizedIncoming.notes || base.notes,
+    lyrics: normalizedIncoming.lyrics || base.lyrics,
+    instruments,
+  };
+}
+
+function normalizeSong(song) {
+  return {
+    id: song.id,
+    title: song.title || "",
+    artist: song.artist || "",
+    key: song.key || "",
+    bpm: song.bpm || "",
+    notes: song.notes || "",
+    lyrics: song.lyrics || "",
+    instruments: Array.isArray(song.instruments) ? song.instruments : [],
+    updatedAt: song.updatedAt || "",
+  };
+}
+
+function mergeInstruments(baseInstruments = [], incomingInstruments = []) {
+  const merged = new Map();
+
+  [...baseInstruments, ...incomingInstruments].forEach((instrument) => {
+    if (!instrument?.name) return;
+    const existing = merged.get(instrument.name);
+    merged.set(instrument.name, {
+      name: instrument.name,
+      chart: instrument.chart || existing?.chart || "",
+    });
+  });
+
+  return [...merged.values()];
 }
 
 function getBackendSongs() {
