@@ -1,4 +1,4 @@
-# Repertorio Arthu-rio
+# ReperArthuRio
 
 Site estatico para GitHub Pages com cadastro de repertorio, letra e cifras por instrumento.
 
