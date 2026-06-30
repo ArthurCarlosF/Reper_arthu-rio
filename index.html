@@ -114,6 +114,25 @@
               <li>Cole a URL em <code>APP_SCRIPT_URL</code> no <code>app.js</code>.</li>
               <li>Use Adicionar ou Editar para salvar no backend.</li>
             </ol>
+
+            <div class="tuner" aria-label="Afinador cromatico">
+              <div class="section-heading">
+                <h3>Afinador</h3>
+                <button id="tunerToggleBtn" class="button button-secondary compact" type="button">
+                  <i data-lucide="mic" aria-hidden="true"></i>
+                  <span>Ligar</span>
+                </button>
+              </div>
+              <div class="tuner-readout">
+                <strong id="tunerNote">--</strong>
+                <span id="tunerFrequency">Microfone desligado</span>
+              </div>
+              <div class="tuner-meter" aria-hidden="true">
+                <span class="tuner-center"></span>
+                <span id="tunerNeedle" class="tuner-needle"></span>
+              </div>
+              <p id="tunerStatus" class="tuner-status">Toque uma corda depois de ligar o afinador.</p>
+            </div>
           </aside>
         </section>
       </main>

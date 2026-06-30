@@ -6,6 +6,15 @@ const state = {
   selectedSongId: null,
   selectedInstrument: "Voz",
   query: "",
+  tuner: {
+    animationId: null,
+    analyser: null,
+    audioContext: null,
+    buffer: null,
+    enabled: false,
+    source: null,
+    stream: null,
+  },
 };
 
 const dom = {
@@ -35,6 +44,11 @@ const dom = {
   cancelDialogBtn: document.querySelector("#cancelDialogBtn"),
   addInstrumentBtn: document.querySelector("#addInstrumentBtn"),
   instrumentFields: document.querySelector("#instrumentFields"),
+  tunerFrequency: document.querySelector("#tunerFrequency"),
+  tunerNeedle: document.querySelector("#tunerNeedle"),
+  tunerNote: document.querySelector("#tunerNote"),
+  tunerStatus: document.querySelector("#tunerStatus"),
+  tunerToggleBtn: document.querySelector("#tunerToggleBtn"),
   toast: document.querySelector("#toast"),
 };
 
@@ -83,6 +97,7 @@ function bindEvents() {
   dom.closeDialogBtn.addEventListener("click", closeDialog);
   dom.cancelDialogBtn.addEventListener("click", closeDialog);
   dom.addInstrumentBtn.addEventListener("click", () => addInstrumentField());
+  dom.tunerToggleBtn.addEventListener("click", toggleTuner);
 
   dom.copyChartBtn.addEventListener("click", () => copyText(dom.chartText.textContent, "Cifra copiada."));
   dom.copyLyricsBtn.addEventListener("click", () => copyText(dom.lyricsText.textContent, "Letra copiada."));
@@ -396,6 +411,155 @@ async function copyText(text, message) {
   } catch {
     showToast("Nao foi possivel copiar.");
   }
+}
+
+async function toggleTuner() {
+  if (state.tuner.enabled) {
+    stopTuner();
+    return;
+  }
+
+  await startTuner();
+}
+
+async function startTuner() {
+  if (!navigator.mediaDevices?.getUserMedia) {
+    showToast("Este navegador nao liberou acesso ao microfone.");
+    return;
+  }
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl: false,
+      },
+    });
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    const audioContext = new AudioContext();
+    const analyser = audioContext.createAnalyser();
+    const source = audioContext.createMediaStreamSource(stream);
+
+    analyser.fftSize = 4096;
+    source.connect(analyser);
+
+    state.tuner = {
+      animationId: null,
+      analyser,
+      audioContext,
+      buffer: new Float32Array(analyser.fftSize),
+      enabled: true,
+      source,
+      stream,
+    };
+
+    updateTunerButton(true);
+    dom.tunerStatus.textContent = "Ouvindo...";
+    readTuner();
+  } catch (error) {
+    console.error(error);
+    showToast("Nao foi possivel acessar o microfone.");
+  }
+}
+
+function stopTuner() {
+  if (state.tuner.animationId) {
+    cancelAnimationFrame(state.tuner.animationId);
+  }
+  state.tuner.stream?.getTracks().forEach((track) => track.stop());
+  state.tuner.audioContext?.close();
+  state.tuner = {
+    animationId: null,
+    analyser: null,
+    audioContext: null,
+    buffer: null,
+    enabled: false,
+    source: null,
+    stream: null,
+  };
+  updateTunerButton(false);
+  dom.tunerNote.textContent = "--";
+  dom.tunerFrequency.textContent = "Microfone desligado";
+  dom.tunerStatus.textContent = "Toque uma corda depois de ligar o afinador.";
+  dom.tunerNeedle.style.transform = "translateX(-50%)";
+}
+
+function readTuner() {
+  if (!state.tuner.enabled) return;
+
+  state.tuner.analyser.getFloatTimeDomainData(state.tuner.buffer);
+  const frequency = detectPitch(state.tuner.buffer, state.tuner.audioContext.sampleRate);
+
+  if (frequency > 0) {
+    renderTunerResult(frequency);
+  } else {
+    dom.tunerNote.textContent = "--";
+    dom.tunerFrequency.textContent = "Sem nota estavel";
+    dom.tunerStatus.textContent = "Aproxime o instrumento e toque uma nota por vez.";
+    dom.tunerNeedle.style.transform = "translateX(-50%)";
+  }
+
+  state.tuner.animationId = requestAnimationFrame(readTuner);
+}
+
+function detectPitch(buffer, sampleRate) {
+  const bufferLength = buffer.length;
+  let rms = 0;
+
+  for (let i = 0; i < bufferLength; i += 1) {
+    rms += buffer[i] * buffer[i];
+  }
+  rms = Math.sqrt(rms / bufferLength);
+  if (rms < 0.01) return -1;
+
+  let bestOffset = -1;
+  let bestCorrelation = 0;
+  const minOffset = Math.floor(sampleRate / 1000);
+  const maxOffset = Math.floor(sampleRate / 55);
+
+  for (let offset = minOffset; offset <= maxOffset; offset += 1) {
+    let correlation = 0;
+    for (let i = 0; i < bufferLength - offset; i += 1) {
+      correlation += 1 - Math.abs(buffer[i] - buffer[i + offset]);
+    }
+    correlation /= bufferLength - offset;
+
+    if (correlation > bestCorrelation) {
+      bestCorrelation = correlation;
+      bestOffset = offset;
+    }
+  }
+
+  if (bestCorrelation < 0.82 || bestOffset < 0) return -1;
+  return sampleRate / bestOffset;
+}
+
+function renderTunerResult(frequency) {
+  const noteNumber = Math.round(12 * Math.log2(frequency / 440) + 69);
+  const noteNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+  const noteName = noteNames[((noteNumber % 12) + 12) % 12];
+  const targetFrequency = 440 * 2 ** ((noteNumber - 69) / 12);
+  const cents = Math.round(1200 * Math.log2(frequency / targetFrequency));
+  const clampedCents = Math.max(-50, Math.min(50, cents));
+
+  dom.tunerNote.textContent = noteName;
+  dom.tunerFrequency.textContent = `${frequency.toFixed(1)} Hz`;
+  dom.tunerStatus.textContent = getTunerStatus(cents);
+  dom.tunerNeedle.style.transform = `translateX(calc(-50% + ${clampedCents * 2.4}px))`;
+}
+
+function getTunerStatus(cents) {
+  if (Math.abs(cents) <= 4) return "Afinado";
+  if (cents < 0) return `${Math.abs(cents)} cents abaixo`;
+  return `${cents} cents acima`;
+}
+
+function updateTunerButton(enabled) {
+  dom.tunerToggleBtn.innerHTML = enabled
+    ? '<i data-lucide="mic-off" aria-hidden="true"></i><span>Desligar</span>'
+    : '<i data-lucide="mic" aria-hidden="true"></i><span>Ligar</span>';
+  refreshIcons();
 }
 
 function showToast(message) {

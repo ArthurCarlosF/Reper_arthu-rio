@@ -378,6 +378,75 @@ button {
   padding-left: 20px;
 }
 
+.tuner {
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+.tuner .section-heading {
+  align-items: center;
+}
+
+.tuner-readout {
+  display: grid;
+  place-items: center;
+  min-height: 128px;
+  margin: 12px 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-strong);
+}
+
+.tuner-readout strong {
+  color: var(--accent-strong);
+  font-size: 4rem;
+  line-height: 1;
+}
+
+.tuner-readout span {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.tuner-meter {
+  position: relative;
+  height: 22px;
+  margin: 10px 4px 8px;
+  border-radius: 999px;
+  background:
+    linear-gradient(90deg, var(--rose), var(--gold) 35%, var(--accent) 50%, var(--gold) 65%, var(--rose));
+}
+
+.tuner-center {
+  position: absolute;
+  left: 50%;
+  top: -5px;
+  width: 2px;
+  height: 32px;
+  background: var(--ink);
+  transform: translateX(-50%);
+}
+
+.tuner-needle {
+  position: absolute;
+  left: 50%;
+  top: -8px;
+  width: 4px;
+  height: 38px;
+  border-radius: 999px;
+  background: var(--surface-strong);
+  box-shadow: 0 0 0 2px var(--ink);
+  transform: translateX(-50%);
+  transition: transform 0.12s ease;
+}
+
+.tuner-status {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
 .song-dialog {
   width: min(920px, calc(100vw - 28px));
   max-height: min(860px, calc(100vh - 28px));
